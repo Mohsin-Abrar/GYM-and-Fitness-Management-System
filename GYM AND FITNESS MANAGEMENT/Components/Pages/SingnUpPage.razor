@@ -1,0 +1,81 @@
+@page "/"
+@page "/signup"
+@using GYM_AND_FITNESS_MANAGEMENT.Models
+@using GYM_AND_FITNESS_MANAGEMENT.Services
+@inject UserService UserService
+@inject NavigationManager nav
+@rendermode InteractiveServer
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="logo-icon">💪</div>
+            <h2>Join GymPro</h2>
+            <p>Create your free member account today</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(SuccessMsg))
+        {
+            <div class="alert alert-success">✅ @SuccessMsg</div>
+        }
+        @if (!string.IsNullOrEmpty(ErrorMsg))
+        {
+            <div class="alert alert-danger">⚠️ @ErrorMsg</div>
+        }
+
+        <EditForm Model="user" OnValidSubmit="HandleSignUp" FormName="SignUpForm">
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <InputText @bind-Value="user.Name" class="form-control" placeholder="abc" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Age</label>
+                    <InputNumber @bind-Value="user.Age" class="form-control" placeholder="25" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <InputText @bind-Value="user.Email" class="form-control" placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <InputText @bind-Value="user.Password" class="form-control" type="password" placeholder="Min. 6 characters" />
+            </div>
+            <button class="btn btn-primary btn-block btn-lg" type="submit" style="margin-top:8px;">
+                Create Account →
+            </button>
+        </EditForm>
+
+        <div style="text-align:center; margin-top:20px;">
+            <span style="font-size:13px; color:var(--text-muted);">Already have an account? </span>
+            <button @onclick="MoveToLogin" class="btn-link">Sign in</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Role is always "User" — admin accounts are added directly via SQL, never through signup
+    User user = new User { Role = "User" };
+    string ErrorMsg = "";
+    string SuccessMsg = "";
+
+    public async Task HandleSignUp()
+    {
+        ErrorMsg = "";
+        SuccessMsg = "";
+
+        if (string.IsNullOrWhiteSpace(user.Name))     { ErrorMsg = "Name is required."; return; }
+        if (user.Age <= 0)                             { ErrorMsg = "Please enter a valid age."; return; }
+        if (string.IsNullOrWhiteSpace(user.Email))    { ErrorMsg = "Email is required."; return; }
+        if (string.IsNullOrWhiteSpace(user.Password)) { ErrorMsg = "Password is required."; return; }
+        if (user.Password!.Length < 6)                { ErrorMsg = "Password must be at least 6 characters."; return; }
+
+        await UserService.SignupAsync(user);
+        SuccessMsg = "Account created! Redirecting to login...";
+        await Task.Delay(1500);
+        nav.NavigateTo("/login");
+    }
+
+    public void MoveToLogin() => nav.NavigateTo("/login");
+}

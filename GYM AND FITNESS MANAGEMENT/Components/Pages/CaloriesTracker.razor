@@ -1,0 +1,201 @@
+@page "/caloriestracker"
+@layout UserLayout
+@inject FoodItemService calorieService
+@inject UserSessionService userSession
+@inject NavigationManager nav
+@rendermode InteractiveServer
+@using GYM_AND_FITNESS_MANAGEMENT.Models
+@using GYM_AND_FITNESS_MANAGEMENT.Services
+
+<div class="page-header">
+    <h1>🥗 Calories Tracker</h1>
+    <p>Search for food items and log your daily intake</p>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="card-title">Add Food Entry</span>
+    </div>
+
+    <div class="form-row cols-3">
+        <div class="form-group" style="position:relative;">
+            <label class="form-label">Search Food</label>
+            <input type="text" class="form-control"
+                   placeholder="Type to search..."
+                   value="@searchText"
+                   @oninput="FilterFood" />
+            @if (filteredFoodItems.Count > 0)
+            {
+                <div class="autocomplete-dropdown">
+                    @foreach (var food in filteredFoodItems)
+                    {
+                        <div class="autocomplete-item"
+                             @onclick="() => SelectFood(food)">
+                            @food.Name
+                            <span class="text-muted" style="font-size:11px; float:right;">@food.CaloriesPerUnit kcal/@food.Unit</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="form-group">
+            <label class="form-label">Quantity (@(selectedUnit))</label>
+            <input type="number" class="form-control" @bind="quantity" min="0.1" step="0.1" placeholder="e.g. 200" />
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-end;">
+            <button class="btn btn-success w-100" @onclick="AddEntry">+ Add</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMsg))
+    {
+        <div class="alert alert-danger">@errorMsg</div>
+    }
+</div>
+
+@if (selectedEntries.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Today's Food Log</span>
+            <span class="badge badge-info">@selectedEntries.Count items</span>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Food</th>
+                        <th>Quantity</th>
+                        <th>Calories</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (entry, index) in selectedEntries.Select((e, i) => (e, i)))
+                    {
+                        <tr>
+                            <td style="color:var(--text-muted);">@(index+1)</td>
+                            <td><strong>@entry.FoodName</strong></td>
+                            <td>@entry.Quantity @entry.Unit</td>
+                            <td><span style="color:var(--primary); font-weight:700;">@entry.TotalCalories.ToString("0") kcal</span></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" @onclick="() => RemoveEntry(index)">Remove</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="calories-summary">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">TOTAL CALORIES</div>
+                    <div class="calories-total">@grandTotal.ToString("0") kcal</div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary" @onclick="ShowTotal">Recalculate</button>
+                    <button class="btn btn-success" @onclick="SaveCalories">💾 Save Log</button>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMsg))
+        {
+            <div class="alert alert-success mt-2">✅ @successMsg</div>
+        }
+    </div>
+}
+
+@code {
+    List<FoodItems> foodItems = new();
+    List<FoodItems> filteredFoodItems = new();
+    List<CaloriesEntry> selectedEntries = new();
+
+    string searchText = "";
+    string selectedUnit = "unit";
+    string errorMsg = "";
+    string successMsg = "";
+    int selectedFoodId = 0;
+    double quantity = 0;
+    double grandTotal = 0;
+    bool showTotal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!userSession.IsLoggedIn) { nav.NavigateTo("/login"); return; }
+        foodItems = await calorieService.GetFoodItemsAsync();
+    }
+
+    void FilterFood(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? "";
+        selectedFoodId = 0;
+        selectedUnit = "unit";
+
+        if (string.IsNullOrWhiteSpace(searchText)) { filteredFoodItems.Clear(); return; }
+
+        filteredFoodItems = foodItems
+            .Where(f => f.Name!.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f.Name!.StartsWith(searchText, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .Take(8).ToList();
+    }
+
+    void SelectFood(FoodItems food)
+    {
+        selectedFoodId = food.Id;
+        searchText = food.Name!;
+        selectedUnit = food.Unit ?? "unit";
+        filteredFoodItems.Clear();
+    }
+
+    void AddEntry()
+    {
+        errorMsg = ""; successMsg = "";
+        if (selectedFoodId == 0) { errorMsg = "Please search and select a food item."; return; }
+        if (quantity <= 0)       { errorMsg = "Please enter a valid quantity."; return; }
+
+        var food = foodItems.FirstOrDefault(f => f.Id == selectedFoodId);
+        if (food != null)
+        {
+            selectedEntries.Add(new CaloriesEntry
+            {
+                FoodName = food.Name,
+                Quantity = quantity,
+                CaloriesPerUnit = food.CaloriesPerUnit,
+                Unit = food.Unit
+            });
+            grandTotal = selectedEntries.Sum(e => e.TotalCalories);
+            selectedFoodId = 0; quantity = 0; searchText = ""; selectedUnit = "unit";
+            filteredFoodItems.Clear();
+        }
+    }
+
+    void RemoveEntry(int index)
+    {
+        selectedEntries.RemoveAt(index);
+        grandTotal = selectedEntries.Sum(e => e.TotalCalories);
+    }
+
+    void ShowTotal()
+    {
+        grandTotal = selectedEntries.Sum(e => e.TotalCalories);
+        showTotal = true;
+    }
+
+    async Task SaveCalories()
+    {
+        errorMsg = ""; successMsg = "";
+        if (selectedEntries.Count == 0) { errorMsg = "Add at least one food item first."; return; }
+
+        foreach (var entry in selectedEntries)
+            entry.UserId = userSession.UserId;
+
+        await calorieService.SaveCaloriesAsync(selectedEntries);
+        successMsg = "Calories saved successfully! Keep it up! 🎉";
+        selectedEntries.Clear();
+        grandTotal = 0;
+    }
+}

@@ -1,0 +1,43 @@
+@inherits LayoutComponentBase
+@inject UserSessionService userSession
+@inject NavigationManager nav
+@using GYM_AND_FITNESS_MANAGEMENT.Services
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🏋️</div>
+            <div>
+                <div class="brand-name">GymPro</div>
+                <div class="brand-sub">Member Portal</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/userdashboard" class="nav-item">
+                <span class="nav-icon">🏠</span> Dashboard
+            </a>
+            <a href="/caloriestracker" class="nav-item">
+                <span class="nav-icon">🥗</span> Calories Tracker
+            </a>
+            <a href="/workoutplanner" class="nav-item">
+                <span class="nav-icon">💪</span> Workout Planner
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/" @onclick="HandleLogout" @onclick:preventDefault class="nav-item">
+                <span class="nav-icon">🚪</span> Logout
+            </a>
+        </div>
+    </div>
+    <div class="main-content">
+        @Body
+    </div>
+</div>
+
+@code {
+    void HandleLogout()
+    {
+        userSession.Logout();
+        nav.NavigateTo("/login", true);
+    }
+}

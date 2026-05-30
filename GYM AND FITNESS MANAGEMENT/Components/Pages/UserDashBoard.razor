@@ -1,0 +1,108 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@page "/userdashboard"
+@layout UserLayout
+@using GYM_AND_FITNESS_MANAGEMENT.Services
+@inject WorkOutServices workOutServices
+@inject FoodItemService foodItemService
+@inject UserSessionService userSession
+@inject NavigationManager nav
+@rendermode InteractiveServer
+
+@if (!userSession.IsLoggedIn)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="welcome-banner">
+        <div>
+            <h2>Welcome back! 👋</h2>
+            <p>@userSession.UserEmail — Here's your fitness summary</p>
+        </div>
+        <div class="banner-emoji">🏆</div>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon orange">🏋️</div>
+            <div class="stat-info">
+                <div class="stat-value">@totalWorkouts</div>
+                <div class="stat-label">Workouts Logged</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">🥗</div>
+            <div class="stat-info">
+                <div class="stat-value">@totalCalories.ToString("0")</div>
+                <div class="stat-label">Total Calories Tracked</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">💪</div>
+            <div class="stat-info">
+                <div class="stat-value">@totalExercises</div>
+                <div class="stat-label">Exercises Available</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">Quick Actions</div>
+    <div class="quick-actions">
+        <a href="/caloriestracker" class="quick-action-btn">
+            <div class="qa-icon">🥗</div>
+            <div class="qa-label">Track Calories</div>
+        </a>
+        <a href="/workoutplanner" class="quick-action-btn">
+            <div class="qa-icon">🏋️</div>
+            <div class="qa-label">Plan Workout</div>
+        </a>
+        <div class="quick-action-btn" style="cursor:default; opacity:.5;">
+            <div class="qa-icon">📈</div>
+            <div class="qa-label">Progress (Soon)</div>
+        </div>
+        <div class="quick-action-btn" style="cursor:default; opacity:.5;">
+            <div class="qa-icon">👤</div>
+            <div class="qa-label">Profile (Soon)</div>
+        </div>
+    </div>
+}
+
+@code {
+    int totalWorkouts = 0;
+    double totalCalories = 0;
+    int totalExercises = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!userSession.IsLoggedIn)
+            {
+                nav.NavigateTo("/login");
+                return;
+            }
+
+            int uid = userSession.UserId;
+            totalWorkouts = await workOutServices.GetTotalWorkoutsAsync(uid);
+            totalExercises = await workOutServices.GetTotalExercisesAsync();
+            totalCalories = await foodItemService.GetTotalCaloriesAsync(uid);
+
+            StateHasChanged(); // refresh UI with loaded data
+        }
+    }
+}

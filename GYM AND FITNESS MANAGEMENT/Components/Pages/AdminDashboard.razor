@@ -1,0 +1,83 @@
+@page "/admindashboard"
+@layout AdminLayout
+@inject UserService userService
+@rendermode InteractiveServer
+@using GYM_AND_FITNESS_MANAGEMENT.Services
+@using GYM_AND_FITNESS_MANAGEMENT.Models
+
+<div class="page-header">
+    <h1>📊 Admin Dashboard</h1>
+    <p>Manage your gym members and monitor activity</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon orange">👥</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalMembers</div>
+            <div class="stat-label">Total Members</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalMembers</div>
+            <div class="stat-label">Active Members</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">📅</div>
+        <div class="stat-info">
+            <div class="stat-value">@DateTime.Now.ToString("MMM d")</div>
+            <div class="stat-label">Today's Date</div>
+        </div>
+    </div>
+</div>
+
+<div class="section-title">Registered Members</div>
+
+@if (members.Count == 0)
+{
+    <div class="alert alert-info">No members registered yet. <a href="/addmember">Add the first member</a>.</div>
+}
+else
+{
+    <div class="card">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Age</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in members)
+                    {
+                        <tr>
+                            <td style="color:var(--text-muted);">#@m.Id</td>
+                            <td><strong>@m.Name</strong></td>
+                            <td>@m.Email</td>
+                            <td>@m.Age</td>
+                            <td><span class="badge badge-success">Active</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    List<User> members = new();
+    int totalMembers = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        members = await userService.GetUsersAsync();
+        totalMembers = members.Count;
+    }
+}

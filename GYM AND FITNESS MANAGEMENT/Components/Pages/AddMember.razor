@@ -1,0 +1,127 @@
+@page "/addmember"
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject ApplicationDbContext db
+@using GYM_AND_FITNESS_MANAGEMENT.Data
+@using GYM_AND_FITNESS_MANAGEMENT.Models
+@using Microsoft.EntityFrameworkCore
+
+<div class="page-header">
+    <h1>➕ Add New Member</h1>
+    <p>Register a new gym member to the system</p>
+</div>
+
+<div class="card" style="max-width:600px;">
+    <div class="card-header">
+        <span class="card-title">Member Information</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(SuccessMsg))
+    {
+        <div class="alert alert-success">✅ @SuccessMsg</div>
+    }
+    @if (!string.IsNullOrEmpty(ErrorMsg))
+    {
+        <div class="alert alert-danger">⚠️ @ErrorMsg</div>
+    }
+
+    <EditForm Model="addmember" OnValidSubmit="HandleAddMember" FormName="AddMemberForm">
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <InputText @bind-Value="addmember.Name" class="form-control" placeholder="e.g. Ahmed Khan" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Age</label>
+                <InputNumber @bind-Value="addmember.Age" class="form-control" placeholder="e.g. 28" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <InputText @bind-Value="addmember.PhoneNumber" class="form-control" placeholder="e.g. 03001234567" />
+        </div>
+
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label class="form-label">Membership Type</label>
+                <InputSelect @bind-Value="addmember.MembershipType" class="form-control">
+                    <option value="">-- Select Plan --</option>
+                    <option value="Basic">Basic (Monthly)</option>
+                    <option value="Standard">Standard (3 Months)</option>
+                    <option value="Premium">Premium (6 Months)</option>
+                    <option value="VIP">VIP (Annual)</option>
+                </InputSelect>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Fee (PKR)</label>
+                <InputNumber @bind-Value="addmember.Fee" class="form-control" placeholder="e.g. 5000" />
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">✅ Add Member</button>
+    </EditForm>
+</div>
+
+@if (recentMembers.Count > 0)
+{
+    <div class="card mt-3">
+        <div class="card-header">
+            <span class="card-title">Recently Added Members</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Age</th><th>Phone</th><th>Plan</th><th>Fee</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in recentMembers)
+                    {
+                        <tr>
+                            <td><strong>@m.Name</strong></td>
+                            <td>@m.Age</td>
+                            <td>@m.PhoneNumber</td>
+                            <td><span class="badge badge-info">@m.MembershipType</span></td>
+                            <td style="color:var(--success);">PKR @m.Fee</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private GYM_AND_FITNESS_MANAGEMENT.Models.AddMember addmember = new();
+    private List<GYM_AND_FITNESS_MANAGEMENT.Models.AddMember> recentMembers = new();
+    string SuccessMsg = "";
+    string ErrorMsg = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        recentMembers = await db.Members.OrderByDescending(m => m.Id).Take(10).ToListAsync();
+    }
+
+    private async Task HandleAddMember()
+    {
+        ErrorMsg = ""; SuccessMsg = "";
+
+        if (string.IsNullOrWhiteSpace(addmember.Name))         
+        { ErrorMsg = "Name is required."; return; }
+        if (addmember.Age <= 0)                                   
+{ ErrorMsg = "Valid age is required."; return; }
+        if (string.IsNullOrWhiteSpace(addmember.PhoneNumber))
+        { ErrorMsg = "Valid phone number is required."; return; }
+        if (string.IsNullOrWhiteSpace(addmember.MembershipType)) 
+        { ErrorMsg = "Please select a membership plan."; return; }
+        if (addmember.Fee <= 0)                                   
+        { ErrorMsg = "Valid fee amount is required."; return; }
+
+        db.Members.Add(addmember);
+        await db.SaveChangesAsync();
+
+        SuccessMsg = $"{addmember.Name} added successfully!";
+        recentMembers = await db.Members.OrderByDescending(m => m.Id).Take(10).ToListAsync();
+        addmember = new();
+    }
+}
